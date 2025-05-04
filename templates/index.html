@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Weather Prediction</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Weather Prediction</h1>
+        <p class="subtitle">Get accurate weather forecasts powered by artificial intelligence</p>
+        
+        <div class="prediction-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="current_temp">Current Temp (°C)</label>
+                    <input type="number" id="current_temp" name="current_temp" step="0.1" placeholder="Optional">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="humidity">Humidity (%)</label>
+                    <input type="number" id="humidity" name="humidity" min="0" max="100" value="50">
+                </div>
+                
+                <div class="form-group">
+                    <label for="pressure">Pressure (hPa)</label>
+                    <input type="number" id="pressure" name="pressure" min="950" max="1050" value="1013">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="wind_speed">Wind Speed (km/h)</label>
+                    <input type="number" id="wind_speed" name="wind_speed" min="0" max="150" value="10">
+                </div>
+                
+                <div class="form-group">
+                    <label for="wind_direction">Wind Direction (°)</label>
+                    <input type="number" id="wind_direction" name="wind_direction" min="0" max="360" value="180">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="cloud_cover">Cloud Cover (%)</label>
+                    <input type="number" id="cloud_cover" name="cloud_cover" min="0" max="100" value="30">
+                </div>
+                
+                <div class="form-group">
+                    <label for="climate_condition">Weather Condition</label>
+                    <select id="climate_condition" name="climate_condition">
+                        <option value="Clear">Clear</option>
+                        <option value="Partly Cloudy" selected>Partly Cloudy</option>
+                        <option value="Cloudy">Cloudy</option>
+                        <option value="Rain">Rain</option>
+                        <option value="Thunderstorm">Thunderstorm</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="predict-btn">Predict Weather</button>
+        </div>
+        
+        <div id="result">
+            <div class="weather-card">
+                <div class="weather-header">
+                    <div class="weather-date" id="prediction-date">Date</div>
+                </div>
+                <div class="weather-main">
+                    <div class="weather-temp" id="prediction-temp">--°C</div>
+                    <div class="weather-climate" id="prediction-climate">Condition</div>
+                </div>
+                <div class="weather-details">
+                    <div class="weather-detail-card">
+                        <span>Precipitation</span>
+                        <span id="prediction-precip">-- mm</span>
+                    </div>
+                    <div class="weather-detail-card">
+                        <span>Visibility</span>
+                        <span id="prediction-visibility">-- km</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="error">
+            <p class="error-message"></p>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
