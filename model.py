@@ -7,50 +7,61 @@ import os
 from datetime import datetime
 
 def generate_sample_data():
-    """Generate more comprehensive sample weather data"""
+    """Generate realistic weather data with seasonal patterns"""
     dates = pd.date_range(start="2020-01-01", end="2023-12-31")
-    temps = np.sin(np.linspace(0, 10*np.pi, len(dates))) * 15 + 25  # Seasonal pattern
+    num_days = len(dates)
+    
+    # Base patterns
+    base_temp = 15 + 10 * np.sin(2 * np.pi * dates.dayofyear / 365)
+    humidity_pattern = 50 + 20 * np.sin(2 * np.pi * dates.dayofyear / 365 + np.pi/2)
     
     df = pd.DataFrame({
         'date': dates,
-        'temperature': temps + np.random.normal(0, 3, len(dates)),
-        'humidity': np.clip(np.random.normal(60, 15, len(dates)), 20, 95),
-        'pressure': np.clip(np.random.normal(1013, 7, len(dates)), 980, 1040),
-        'wind_speed': np.clip(np.random.weibull(2, len(dates)) * 10),  # km/h
-        'wind_direction': np.random.randint(0, 360, len(dates)),
-        'precipitation': np.random.exponential(0.5, len(dates)),
-        'cloud_cover': np.random.randint(0, 100, len(dates)),  # percentage
-        'visibility': np.clip(np.random.normal(10, 3, len(dates)), 1, 20),  # km
-        'climate_condition': np.random.choice(['Clear', 'Partly Cloudy', 'Cloudy', 'Rain', 'Thunderstorm'], len(dates))
+        'temperature': base_temp + np.random.normal(0, 3, num_days),
+        'humidity': np.clip(humidity_pattern + np.random.normal(0, 10, num_days), 20, 95),
+        'pressure': np.clip(1015 + np.random.normal(0, 7, num_days), 980, 1040),
+        'wind_speed': np.clip(np.random.weibull(1.5, num_days) * 15),  # km/h
+        'wind_direction': np.random.randint(0, 360, num_days),
+        'precipitation': np.clip(np.random.exponential(0.3, num_days), 0, 10),
+        'cloud_cover': np.random.randint(0, 100, num_days),
+        'climate_condition': np.random.choice(['Clear', 'Partly Cloudy', 'Cloudy', 'Rain', 'Thunderstorm'], num_days)
     })
     
-    # Convert climate condition to numerical values
-    climate_map = {'Clear': 0, 'Partly Cloudy': 1, 'Cloudy': 2, 'Rain': 3, 'Thunderstorm': 4}
-    df['climate_code'] = df['climate_condition'].map(climate_map)
+    # Make weather conditions consistent with other parameters
+    df.loc[df['precipitation'] > 2, 'climate_condition'] = 'Rain'
+    df.loc[df['precipitation'] > 5, 'climate_condition'] = 'Thunderstorm'
+    df.loc[df['cloud_cover'] < 20, 'climate_condition'] = 'Clear'
+    df.loc[(df['cloud_cover'] >= 20) & (df['cloud_cover'] < 70), 'climate_condition'] = 'Partly Cloudy'
+    df.loc[df['cloud_cover'] >= 70, 'climate_condition'] = 'Cloudy'
     
     df.to_csv('data/weather_data.csv', index=False)
 
 def train_model():
-    """Train the enhanced weather prediction model"""
+    """Train the weather prediction model with realistic patterns"""
     if not os.path.exists('data/weather_data.csv'):
         generate_sample_data()
     
     df = pd.read_csv('data/weather_data.csv')
     df['date'] = pd.to_datetime(df['date'])
     df['day_of_year'] = df['date'].dt.dayofyear
-    df['year'] = df['date'].dt.year
+    df['month'] = df['date'].dt.month
+    df['season'] = (df['month'] % 12 + 3) // 3
     
-    # Features for prediction
-    X = df[['day_of_year', 'year', 'humidity', 'pressure', 
-            'wind_speed', 'wind_direction', 'cloud_cover', 
-            'climate_code']]
+    # Convert climate condition to numerical values
+    climate_map = {'Clear': 0, 'Partly Cloudy': 1, 'Cloudy': 2, 'Rain': 3, 'Thunderstorm': 4}
+    df['climate_code'] = df['climate_condition'].map(climate_map)
     
-    # What we want to predict
-    y = df[['temperature', 'precipitation', 'visibility']]
+    # Features and target
+    features = ['day_of_year', 'season', 'humidity', 'pressure', 
+               'wind_speed', 'wind_direction', 'cloud_cover', 'climate_code']
+    targets = ['temperature', 'precipitation', 'cloud_cover']
+    
+    X = df[features]
+    y = df[targets]
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    model = RandomForestRegressor(n_estimators=150, random_state=42)
+    model = RandomForestRegressor(n_estimators=200, random_state=42)
     model.fit(X_train, y_train)
     
     joblib.dump(model, 'weather_model.pkl')
@@ -59,7 +70,7 @@ def train_model():
 def predict_weather(date, current_temp=None, humidity=50, pressure=1013, 
                    wind_speed=10, wind_direction=180, cloud_cover=30, 
                    climate_condition='Partly Cloudy'):
-    """Make enhanced weather predictions"""
+    """Make dynamic predictions based on inputs"""
     if not os.path.exists('weather_model.pkl'):
         model = train_model()
     else:
@@ -68,34 +79,53 @@ def predict_weather(date, current_temp=None, humidity=50, pressure=1013,
     try:
         date = pd.to_datetime(date)
         day_of_year = date.dayofyear
-        year = date.year
+        month = date.month
+        season = (month % 12 + 3) // 3
         
-        # Map climate condition to code
         climate_map = {'Clear': 0, 'Partly Cloudy': 1, 'Cloudy': 2, 'Rain': 3, 'Thunderstorm': 4}
         climate_code = climate_map.get(climate_condition, 1)
         
-        # If current temperature is provided, use it as a feature
-        temp_feature = current_temp if current_temp is not None else 20  # Default if not provided
+        # Prepare input features
+        features = np.array([[
+            day_of_year, season, humidity, pressure,
+            wind_speed, wind_direction, cloud_cover, climate_code
+        ]])
         
-        features = np.array([[day_of_year, year, humidity, pressure, 
-                             wind_speed, wind_direction, cloud_cover, 
-                             climate_code]])
-        
+        # Get prediction
         prediction = model.predict(features)
         
+        # Calculate derived values
+        predicted_temp = float(round(prediction[0][0], 1))
+        predicted_precip = float(round(max(0, prediction[0][1]), 1))
+        predicted_cloud = int(round(prediction[0][2]))
+        
+        # Determine likely climate condition based on predictions
+        if predicted_precip > 5:
+            likely_climate = 'Thunderstorm'
+        elif predicted_precip > 2:
+            likely_climate = 'Rain'
+        elif predicted_cloud < 20:
+            likely_climate = 'Clear'
+        elif predicted_cloud < 70:
+            likely_climate = 'Partly Cloudy'
+        else:
+            likely_climate = 'Cloudy'
+        
         return {
-            'predicted_temp': float(round(prediction[0][0], 1)),
-            'predicted_precip': float(round(max(0, prediction[0][1]), 1)),
-            'predicted_visibility': float(round(prediction[0][2], 1)),
+            'predicted_temp': predicted_temp,
+            'predicted_precip': predicted_precip,
+            'predicted_cloud': predicted_cloud,
+            'predicted_visibility': max(1, 20 - int(predicted_precip * 2)),  # km
+            'predicted_wind_speed': wind_speed + np.random.uniform(-2, 2),  # Small variation
+            'likely_climate': likely_climate,
             'date': date.strftime('%Y-%m-%d'),
-            'climate_condition': climate_condition
+            'input_parameters': {
+                'humidity': humidity,
+                'pressure': pressure,
+                'wind_speed': wind_speed,
+                'wind_direction': wind_direction
+            }
         }
     except Exception as e:
         print(f"Prediction error: {str(e)}")
         return None
-
-if __name__ == '__main__':
-    # Test prediction with more parameters
-    print(predict_weather('2024-06-15', current_temp=25, humidity=65, 
-                         pressure=1012, wind_speed=15, wind_direction=270,
-                         cloud_cover=40, climate_condition='Partly Cloudy'))

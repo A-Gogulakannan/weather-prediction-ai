@@ -13,20 +13,25 @@ def predict():
     data = request.get_json()
     
     try:
-        # Required field
-        date = data['date']
+        required_fields = ['date', 'humidity', 'pressure', 'wind_speed', 
+                         'wind_direction', 'cloud_cover', 'climate_condition']
         
-        # Optional fields with defaults
-        current_temp = float(data.get('current_temp', '')) if data.get('current_temp') else None
-        humidity = float(data.get('humidity', 50))
-        pressure = float(data.get('pressure', 1013))
-        wind_speed = float(data.get('wind_speed', 10))
-        wind_direction = float(data.get('wind_direction', 180))
-        cloud_cover = float(data.get('cloud_cover', 30))
-        climate_condition = data.get('climate_condition', 'Partly Cloudy')
+        # Validate required fields
+        if not all(field in data for field in required_fields):
+            return jsonify({'success': False, 'error': 'Missing required fields'})
         
+        # Get parameters with defaults
+        current_temp = float(data['current_temp']) if 'current_temp' in data else None
+        humidity = float(data['humidity'])
+        pressure = float(data['pressure'])
+        wind_speed = float(data['wind_speed'])
+        wind_direction = float(data['wind_direction'])
+        cloud_cover = float(data['cloud_cover'])
+        climate_condition = data['climate_condition']
+        
+        # Make prediction
         prediction = predict_weather(
-            date=date,
+            date=data['date'],
             current_temp=current_temp,
             humidity=humidity,
             pressure=pressure,
@@ -37,9 +42,14 @@ def predict():
         )
         
         if prediction:
-            return jsonify({'success': True, 'prediction': prediction})
+            return jsonify({
+                'success': True,
+                'prediction': prediction,
+                'calculation_time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
         else:
             return jsonify({'success': False, 'error': 'Prediction failed'})
+            
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
